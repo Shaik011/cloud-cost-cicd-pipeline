@@ -27,12 +27,14 @@ pipeline {
             }
         }
         stage('Push to ACR') {
-            steps {
-                sh 'az acr login --name ${ACR_NAME}'
-                sh 'docker tag myapp:${BUILD_NUMBER} ${ACR_NAME}.azurecr.io/myapp:${BUILD_NUMBER}'
-                sh 'docker push ${ACR_NAME}.azurecr.io/myapp:${BUILD_NUMBER}'
-            }
-        }
+    steps {
+        sh 'az acr login --name ${ACR_NAME}'
+        sh 'docker tag myapp:${BUILD_NUMBER} ${ACR_NAME}.azurecr.io/myapp:${BUILD_NUMBER}'
+        sh 'docker tag myapp:${BUILD_NUMBER} ${ACR_NAME}.azurecr.io/myapp:latest'
+        sh 'docker push ${ACR_NAME}.azurecr.io/myapp:${BUILD_NUMBER}'
+        sh 'docker push ${ACR_NAME}.azurecr.io/myapp:latest'
+    }
+}
         stage('Deploy to Kubernetes') {
             steps {
                 sh 'az aks get-credentials --resource-group cloud-cost-cicd-rg --name cloud-cost-cicd-aks --overwrite-existing'

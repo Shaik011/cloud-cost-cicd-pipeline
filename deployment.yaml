@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
       - name: myapp
-        image: cloudcostcicdacr.azurecr.io/myapp:v1
+        image: cloudcostcicdacr.azurecr.io/myapp:latest
         ports:
         - containerPort: 8080
 ---
