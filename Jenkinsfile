@@ -2,17 +2,42 @@ pipeline {
     agent any
     environment {
         DOCKERHUB_CREDENTIALS = credentials('dockerhub-creds')
+        ACR_NAME = 'cloudcostcicdacr'
+        ARM_CLIENT_ID       = credentials('azure-client-id')
+        ARM_CLIENT_SECRET   = credentials('azure-client-secret')
+        ARM_TENANT_ID       = credentials('azure-tenant-id')
+        ARM_SUBSCRIPTION_ID = credentials('azure-subscription-id')
     }
     stages {
         stage('Build') {
             steps {
-                sh 'docker build -t shaik011/myapp:${BUILD_NUMBER} .'
+                sh 'docker build -t myapp:${BUILD_NUMBER} .'
             }
         }
-        stage('Push') {
+        stage('Azure Login') {
             steps {
-                sh 'echo $DOCKERHUB_CREDENTIALS_PSW | docker login -u $DOCKERHUB_CREDENTIALS_USR --password-stdin'
-                sh 'docker push shaik011/myapp:${BUILD_NUMBER}'
+                sh 'az login --service-principal -u $ARM_CLIENT_ID -p $ARM_CLIENT_SECRET --tenant $ARM_TENANT_ID'
+            }
+        }
+        stage('Push to ACR') {
+            steps {
+                sh 'az acr login --name ${ACR_NAME}'
+                sh 'docker tag myapp:${BUILD_NUMBER} ${ACR_NAME}.azurecr.io/myapp:${BUILD_NUMBER}'
+                sh 'docker push ${ACR_NAME}.azurecr.io/myapp:${BUILD_NUMBER}'
+            }
+        }
+        stage('Terraform Apply') {
+            steps {
+                dir('terraform-infra') {
+                    sh 'terraform init'
+                    sh 'terraform apply -auto-approve'
+                }
+            }
+        }
+        stage('Deploy to Kubernetes') {
+            steps {
+                sh 'az aks get-credentials --resource-group cloud-cost-cicd-rg --name cloud-cost-cicd-aks --overwrite-existing'
+                sh 'kubectl set image deployment/myapp-deployment myapp=${ACR_NAME}.azurecr.io/myapp:${BUILD_NUMBER} --record || kubectl apply -f deployment.yaml'
             }
         }
     }
