@@ -1,7 +1,6 @@
 pipeline {
     agent any
     environment {
-        DOCKERHUB_CREDENTIALS = credentials('dockerhub-creds')
         ACR_NAME = 'cloudcostcicdacr'
         ARM_CLIENT_ID       = credentials('azure-client-id')
         ARM_CLIENT_SECRET   = credentials('azure-client-secret')
@@ -19,19 +18,19 @@ pipeline {
                 sh 'az login --service-principal -u $ARM_CLIENT_ID -p $ARM_CLIENT_SECRET --tenant $ARM_TENANT_ID'
             }
         }
-        stage('Push to ACR') {
-            steps {
-                sh 'az acr login --name ${ACR_NAME}'
-                sh 'docker tag myapp:${BUILD_NUMBER} ${ACR_NAME}.azurecr.io/myapp:${BUILD_NUMBER}'
-                sh 'docker push ${ACR_NAME}.azurecr.io/myapp:${BUILD_NUMBER}'
-            }
-        }
         stage('Terraform Apply') {
             steps {
                 dir('terraform-infra') {
                     sh 'terraform init'
                     sh 'terraform apply -auto-approve'
                 }
+            }
+        }
+        stage('Push to ACR') {
+            steps {
+                sh 'az acr login --name ${ACR_NAME}'
+                sh 'docker tag myapp:${BUILD_NUMBER} ${ACR_NAME}.azurecr.io/myapp:${BUILD_NUMBER}'
+                sh 'docker push ${ACR_NAME}.azurecr.io/myapp:${BUILD_NUMBER}'
             }
         }
         stage('Deploy to Kubernetes') {
