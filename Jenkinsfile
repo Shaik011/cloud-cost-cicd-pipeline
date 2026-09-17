@@ -9,21 +9,21 @@ pipeline {
     }
     stages {
         stage('Install Dependencies') {
-       steps {
-        sh 'pip install -r requirements.txt --break-system-packages'
-    }
-}
-stage('Dependency Check') {
-    steps {
-        sh 'pip install pip-audit --break-system-packages || true'
-        sh 'pip-audit -r requirements.txt || true'
-    }
-}
-stage('Run Tests') {
-    steps {
-        sh 'python -m pytest test_app.py -v'
-    }
-}
+            steps {
+                sh 'pip3 install -r requirements.txt --break-system-packages'
+            }
+        }
+        stage('Dependency Check') {
+            steps {
+                sh 'pip3 install pip-audit --break-system-packages || true'
+                sh 'python3 -m pip_audit -r requirements.txt || true'
+            }
+        }
+        stage('Run Tests') {
+            steps {
+                sh 'python3 -m pytest test_app.py -v'
+            }
+        }
         stage('Build') {
             steps {
                 sh 'docker build -t myapp:${BUILD_NUMBER} .'
@@ -43,14 +43,14 @@ stage('Run Tests') {
             }
         }
         stage('Push to ACR') {
-    steps {
-        sh 'az acr login --name ${ACR_NAME}'
-        sh 'docker tag myapp:${BUILD_NUMBER} ${ACR_NAME}.azurecr.io/myapp:${BUILD_NUMBER}'
-        sh 'docker tag myapp:${BUILD_NUMBER} ${ACR_NAME}.azurecr.io/myapp:latest'
-        sh 'docker push ${ACR_NAME}.azurecr.io/myapp:${BUILD_NUMBER}'
-        sh 'docker push ${ACR_NAME}.azurecr.io/myapp:latest'
-    }
-}
+            steps {
+                sh 'az acr login --name ${ACR_NAME}'
+                sh 'docker tag myapp:${BUILD_NUMBER} ${ACR_NAME}.azurecr.io/myapp:${BUILD_NUMBER}'
+                sh 'docker tag myapp:${BUILD_NUMBER} ${ACR_NAME}.azurecr.io/myapp:latest'
+                sh 'docker push ${ACR_NAME}.azurecr.io/myapp:${BUILD_NUMBER}'
+                sh 'docker push ${ACR_NAME}.azurecr.io/myapp:latest'
+            }
+        }
         stage('Deploy to Kubernetes') {
             steps {
                 sh 'az aks get-credentials --resource-group cloud-cost-cicd-rg --name cloud-cost-cicd-aks --overwrite-existing'
