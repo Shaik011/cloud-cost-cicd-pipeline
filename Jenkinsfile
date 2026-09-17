@@ -8,6 +8,22 @@ pipeline {
         ARM_SUBSCRIPTION_ID = credentials('azure-subscription-id')
     }
     stages {
+        stage('Install Dependencies') {
+       steps {
+        sh 'pip install -r requirements.txt --break-system-packages'
+    }
+}
+stage('Dependency Check') {
+    steps {
+        sh 'pip install pip-audit --break-system-packages || true'
+        sh 'pip-audit -r requirements.txt || true'
+    }
+}
+stage('Run Tests') {
+    steps {
+        sh 'python -m pytest test_app.py -v'
+    }
+}
         stage('Build') {
             steps {
                 sh 'docker build -t myapp:${BUILD_NUMBER} .'
