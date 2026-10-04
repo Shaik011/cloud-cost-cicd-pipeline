@@ -11,7 +11,7 @@ pipeline {
 
         INFRACOST_CLI_AUTHENTICATION_TOKEN = credentials('infracost-api-token')
 
-        BUDGET = '80'
+        BUDGET = '50'
     }
 
     stages {
