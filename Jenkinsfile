@@ -69,7 +69,7 @@ pipeline {
                 sh '''
                     echo "===== RUNNING INFRACOST ====="
                     infracost auth whoami
-                    infracost scan terraform-infra --json > terraform-infra/cost.json
+                    infracost scan terraform-infra --org pes-university --json > terraform-infra/cost.json
                     infracost inspect --file terraform-infra/cost.json --summary
 
                     echo "===== AZURE ESTIMATED COST ====="
