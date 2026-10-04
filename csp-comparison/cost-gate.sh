@@ -24,6 +24,7 @@ then
 else
     echo ""
     echo "OVER BUDGET"
+    python3 csp-comparison/compare.py
     echo "CSP comparison required."
     echo "OVER_BUDGET"
     exit 0
