@@ -64,21 +64,20 @@ pipeline {
             }
         }
 
-        stage('Infracost Scan') {
-            steps {
-                sh '''
-                    echo "===== RUNNING INFRACOST ====="
+     stage('Infracost Scan') {
+    steps {
+        sh '''
+            echo "===== RUNNING INFRACOST ====="
 
-                    infracost scan terraform-infra \
-                      --format json \
-                      --out-file terraform-infra/cost.json
+            infracost scan terraform-infra \
+              --out-file terraform-infra/cost.json
 
-                    echo "===== AZURE ESTIMATED COST ====="
+            echo "===== AZURE ESTIMATED COST ====="
 
-                    python3 -c "import json; d=json.load(open('terraform-infra/cost.json')); print('Azure: $' + str(d.get('totalMonthlyCost', 'UNKNOWN')) + '/month')"
-                '''
-            }
-        }
+            python3 -c "import json; d=json.load(open('terraform-infra/cost.json')); print('Azure: $' + str(d.get('totalMonthlyCost', 'UNKNOWN')) + '/month')"
+        '''
+    }
+}
 
         stage('Cloud Cost Gate') {
             steps {
