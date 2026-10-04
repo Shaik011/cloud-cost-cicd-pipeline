@@ -9,7 +9,8 @@ pipeline {
         ARM_TENANT_ID       = credentials('azure-tenant-id')
         ARM_SUBSCRIPTION_ID = credentials('azure-subscription-id')
 
-        INFRACOST_CLI_AUTHENTICATION_TOKEN = credentials('infracost-api-token')
+        // Changed: classic Infracost CLI reads INFRACOST_API_KEY
+        INFRACOST_API_KEY = credentials('infracost-api-token')
 
         BUDGET = '80'
     }
@@ -24,8 +25,10 @@ pipeline {
 
         stage('Dependency Check') {
             steps {
-                sh 'pip3 install pip-audit --break-system-packages || true'
-                sh 'python3 -m pip_audit -r requirements.txt || true'
+                sh 'pip3 install pip-audit --break-system-packages'
+                // Changed: no "-r" (that needs python3-venv). Audits the installed environment.
+                // Remove "|| true" once you want vulnerabilities to fail the build.
+                sh 'python3 -m pip_audit || true'
             }
         }
 
@@ -64,34 +67,21 @@ pipeline {
             }
         }
 
-        stage('Test Infracost Auth') {
-            steps {
-                sh '''
-                    echo "Testing Infracost authentication..."
-
-                    if [ -n "$INFRACOST_CLI_AUTHENTICATION_TOKEN" ]; then
-                        echo "INFRACOST TOKEN: PRESENT"
-                    else
-                        echo "INFRACOST TOKEN: MISSING"
-                        exit 1
-                    fi
-
-                    infracost scan --org pes-university
-                '''
-            }
-        }
+        // Removed: "Test Infracost Auth" stage (it was the diagnostic that failed the build)
 
         stage('Infracost Scan') {
             steps {
                 sh '''
                     echo "===== RUNNING INFRACOST ====="
 
-                    infracost scan terraform-infra \
+                    infracost breakdown \
+                      --path terraform-infra \
+                      --format json \
                       --out-file terraform-infra/cost.json
 
                     echo "===== AZURE ESTIMATED COST ====="
 
-                    python3 -c "import json; d=json.load(open('terraform-infra/cost.json')); print('Azure: $' + str(d.get('totalMonthlyCost', 'UNKNOWN')) + '/month')"
+                    python3 -c 'import json,sys; d=json.load(open("terraform-infra/cost.json")); c=d.get("totalMonthlyCost"); print("Azure: $" + str(c) + "/month"); sys.exit(1 if c is None or float(c) == 0 else 0)'
                 '''
             }
         }
@@ -112,16 +102,21 @@ pipeline {
                         env.SELECTED_CSP = 'Azure'
                         echo 'Cost is within budget. Continuing with Azure deployment.'
                     } else {
-                        def choice = input(
-                            message: 'Azure is over budget. Select deployment option:',
-                            parameters: [
-                                choice(
-                                    name: 'CSP',
-                                    choices: 'Azure\nAWS\nGCP\nSTOP',
-                                    description: 'Select the cloud provider to deploy'
-                                )
-                            ]
-                        )
+                        def choice = 'STOP'
+
+                        // Changed: timeout so a forgotten prompt doesn't hold the executor
+                        timeout(time: 30, unit: 'MINUTES') {
+                            choice = input(
+                                message: 'Azure is over budget. Select deployment option:',
+                                parameters: [
+                                    choice(
+                                        name: 'CSP',
+                                        choices: 'Azure\nAWS\nGCP\nSTOP',
+                                        description: 'Select the cloud provider to deploy'
+                                    )
+                                ]
+                            )
+                        }
 
                         env.SELECTED_CSP = choice
 
