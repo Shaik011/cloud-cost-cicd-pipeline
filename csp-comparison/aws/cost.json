@@ -1,0 +1,284 @@
+{
+  "currency": "USD",
+  "summary": {
+    "projects": 1,
+    "resources": 3,
+    "costed_resources": 3,
+    "free_resources": 0,
+    "total_monthly_cost": "139.32",
+    "total_potential_yearly_savings": "392.448",
+    "finops_policies": 5,
+    "failing_finops_policies": 3,
+    "distinct_failing_finops_resources": 2,
+    "tagging_policies": 1,
+    "failing_tagging_policies": 1,
+    "distinct_failing_tagging_resources": 4
+  },
+  "projects": [
+    {
+      "project_name": "main",
+      "path": ".",
+      "finops_results": [
+        {
+          "policy_id": "0dc7cc7a-4ae4-43ce-a900-491cc92e2408",
+          "policy_name": "[EC2.9, EC2.25] Amazon EC2 and launch templates should not associate a public IPv4 address",
+          "policy_slug": "aws-ec2-disable-associate-public-ipv4",
+          "policy_message": "EC2 instances and launch templates should not have a public IPv4 address to reduce attack surface and prevent direct internet exposure. Use NAT gateways for outbound connectivity and AWS Systems Manager Session Manager for secure instance access. Corresponds to AWS Security Hub control EC2.9 and EC2.25.",
+          "failing_resources": [
+            {
+              "name": "aws_instance.worker",
+              "issues": [
+                {
+                  "description": "Consider disabling `associate_public_ip_address`. Set it to `false` and use NAT gateways for outbound connectivity.",
+                  "yearly_savings": "0",
+                  "monthly_carbon_savings_grams_co2e": "0",
+                  "monthly_water_savings_liters": "0",
+                  "address": "aws_instance.worker",
+                  "attribute": "associate_public_ip_address"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "policy_id": "c3f23fb1-a1b4-479f-a9b8-a9eb449b692b",
+          "policy_name": "EBS - consider upgrading gp2 volumes to gp3",
+          "policy_slug": "aws-gp2-to-gp3",
+          "policy_message": "gp3 volumes are the latest generation of general-purpose SSD-based EBS volumes that enable you to provision performance independent of storage capacity, while providing up to **20% lower price per GB** than existing gp2 volumes. With gp3 volumes, you can scale IOPS (input/output operations per second) and throughput without needing to provision additional block storage capacity. This means you only pay for the storage you need.",
+          "failing_resources": []
+        },
+        {
+          "policy_id": "53524442-a18a-4cbc-948c-a0904d3388e4",
+          "policy_name": "ECR - consider using a lifecycle policy",
+          "policy_slug": "aws-use-ecr-lifecycle-policy",
+          "policy_message": "A lifecycle policy should be defined for Amazon ECR repositories to automate the management of image retention, optimize storage costs, improve performance, and remove images that are no longer needed. For example, storing 1TB of images in ECR costs $100/month. Reducing this to 100GB by removing unused images greater than 30 days old reduces that to $4/month. That's a 96% cost saving.",
+          "failing_resources": [
+            {
+              "name": "aws_ecr_repository.app",
+              "issues": [
+                {
+                  "description": "Add a lifecycle policy for the repository",
+                  "yearly_savings": "0",
+                  "monthly_carbon_savings_grams_co2e": "0",
+                  "monthly_water_savings_liters": "0",
+                  "address": "aws_ecr_repository.app",
+                  "attribute": "name"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "policy_id": "babec913-58f6-4f65-b534-7ce3c77dd7f9",
+          "policy_name": "EC2 - consider using Graviton instances",
+          "policy_slug": "aws-use-graviton-ec2-instance",
+          "policy_message": "Graviton instances are around 20% cheaper than equivalent x86 instances.",
+          "failing_resources": [
+            {
+              "name": "aws_instance.worker",
+              "issues": [
+                {
+                  "description": "Switch `instance_type` from `t3.large` to `t4g.large`",
+                  "yearly_savings": "392.448",
+                  "monthly_carbon_savings_grams_co2e": "1130.0501250999998",
+                  "monthly_water_savings_liters": "5.330730099999999",
+                  "address": "aws_instance.worker",
+                  "attribute": "instance_type"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "policy_id": "9b85ee14-71d8-4d45-8ccc-8cab43c2f399",
+          "policy_name": "EC2 - consider using latest generation instances for t family instances",
+          "policy_slug": "aws-use-latest-generation-t-family-policy",
+          "policy_message": "Upgrade to Amazon EC2 t3 instances for improved Intel Xeon Processors, AWS Nitro System and EBS optimization by default, all at lower price point than previous generations. For example a `t2.medium` instance with 4 GiB of memory and 2 vCPUs (for a 4h 48m burst) has a monthly cost of $33. Whereas a `t3.medium` instance with equivalent machine specs costs just $30. That's a 10% cost saving for a more performant machine.",
+          "failing_resources": []
+        }
+      ],
+      "tagging_results": [
+        {
+          "policy_id": "f6931ef2-1597-4dfc-a6b0-835dde22a3fd",
+          "policy_name": "FinOps tags",
+          "message": "This example Tagging policy shows how you can enforce required FinOps tag keys/values in pull requests. This example checks for the tags 'Service' (can have any value) and 'Environment' (must be Dev/Stage/Prod) on all taggable resources being changed in the pull request. You can adjust it from https://dashboard.infracost.io \u003e Governance \u003e Tagging policies. You have a 14 day trial of this feature as it's part of Infracost Cloud.",
+          "tag_schema": [
+            {
+              "key": "Environment",
+              "valid_values": [
+                "Dev",
+                "Prod",
+                "Stage"
+              ],
+              "mandatory": true
+            },
+            {
+              "key": "Service",
+              "mandatory": true
+            }
+          ],
+          "failing_resources": [
+            {
+              "address": "aws_instance.worker",
+              "resource_type": "aws_instance",
+              "invalid_tags": [
+                {
+                  "key": "Environment",
+                  "value": ""
+                }
+              ],
+              "path": "main.tf",
+              "line": 31,
+              "missing_mandatory_tags": [
+                "Service"
+              ],
+              "propagation_problems": []
+            },
+            {
+              "address": "aws_instance.worker.root_block_device",
+              "resource_type": "aws_instance",
+              "invalid_tags": [
+                {
+                  "key": "Environment",
+                  "value": ""
+                }
+              ],
+              "path": "main.tf",
+              "line": 31,
+              "missing_mandatory_tags": [
+                "Service"
+              ],
+              "propagation_problems": []
+            },
+            {
+              "address": "aws_ecr_repository.app",
+              "resource_type": "aws_ecr_repository",
+              "invalid_tags": [
+                {
+                  "key": "Environment",
+                  "value": ""
+                }
+              ],
+              "path": "main.tf",
+              "line": 15,
+              "missing_mandatory_tags": [
+                "Service"
+              ],
+              "propagation_problems": []
+            },
+            {
+              "address": "aws_eks_cluster.app",
+              "resource_type": "aws_eks_cluster",
+              "invalid_tags": [
+                {
+                  "key": "Environment",
+                  "value": ""
+                }
+              ],
+              "path": "main.tf",
+              "line": 20,
+              "missing_mandatory_tags": [
+                "Service"
+              ],
+              "propagation_problems": []
+            }
+          ]
+        }
+      ],
+      "resources": [
+        {
+          "name": "aws_instance.worker",
+          "type": "aws_instance",
+          "is_supported": true,
+          "is_free": false,
+          "cost_components": [
+            {
+              "name": "Instance usage (Linux/UNIX, on-demand, t3.large)",
+              "unit": "hours",
+              "price": "0.0896",
+              "quantity": "730",
+              "base_monthly_cost": "65.408",
+              "usage_monthly_cost": "0",
+              "total_monthly_cost": "65.408",
+              "monthly_carbon_savings_grams_co2e": "3081.3140495",
+              "monthly_water_savings_liters": "7.6368073999999995"
+            }
+          ],
+          "subresources": [
+            {
+              "name": "root_block_device",
+              "type": "",
+              "is_supported": false,
+              "is_free": false,
+              "cost_components": [
+                {
+                  "name": "Storage (general purpose SSD, gp2)",
+                  "unit": "GB",
+                  "price": "0.114",
+                  "quantity": "8",
+                  "base_monthly_cost": "0.912",
+                  "usage_monthly_cost": "0",
+                  "total_monthly_cost": "0.912",
+                  "monthly_carbon_savings_grams_co2e": "27.02239848",
+                  "monthly_water_savings_liters": "0.06341008"
+                }
+              ],
+              "supports_tags": true,
+              "supports_default_tags": true,
+              "metadata": {}
+            }
+          ],
+          "supports_tags": true,
+          "supports_default_tags": true,
+          "metadata": {
+            "filename": "main.tf",
+            "start_line": 31,
+            "end_line": 33,
+            "deep_checksum": "cf79cbd8cb6cfb02"
+          }
+        },
+        {
+          "name": "aws_ecr_repository.app",
+          "type": "aws_ecr_repository",
+          "is_supported": true,
+          "is_free": false,
+          "supports_tags": true,
+          "supports_default_tags": true,
+          "metadata": {
+            "filename": "main.tf",
+            "start_line": 15,
+            "end_line": 17,
+            "deep_checksum": "455d88270c1b0280"
+          }
+        },
+        {
+          "name": "aws_eks_cluster.app",
+          "type": "aws_eks_cluster",
+          "is_supported": true,
+          "is_free": false,
+          "cost_components": [
+            {
+              "name": "EKS cluster",
+              "unit": "hours",
+              "price": "0.1",
+              "quantity": "730",
+              "base_monthly_cost": "73",
+              "usage_monthly_cost": "0",
+              "total_monthly_cost": "73",
+              "monthly_carbon_savings_grams_co2e": "0",
+              "monthly_water_savings_liters": "0"
+            }
+          ],
+          "supports_tags": true,
+          "supports_default_tags": true,
+          "metadata": {
+            "filename": "main.tf",
+            "start_line": 20,
+            "end_line": 26,
+            "deep_checksum": "d2ad2cb2f0d734f0"
+          }
+        }
+      ]
+    }
+  ]
+}

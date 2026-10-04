@@ -1,23 +1,20 @@
-terraform-infra/.terraform/
+# Terraform
+.terraform/
 *.tfstate
-*.tfstate.backup
-
-# Terraform generated files
-terraform-infra/tfplan
-terraform-infra/tfplan.json
+*.tfstate.*
+tfplan
+tfplan.json
+*.tfplan
 
 # Infracost generated files
 terraform-infra/cost.json
-csp-comparison/aws/cost.json
-csp-comparison/gcp/cost.json
 
 # Temporary files
 terraform-infra/powershell
 terraform-infra/set
+structure.txt
 
 # Python
 __pycache__/
 *.pyc
-
-# Project notes
-structure.txt
+.pytest_cache/

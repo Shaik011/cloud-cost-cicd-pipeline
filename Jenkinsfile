@@ -9,8 +9,7 @@ pipeline {
         ARM_TENANT_ID       = credentials('azure-tenant-id')
         ARM_SUBSCRIPTION_ID = credentials('azure-subscription-id')
 
-        // Changed: classic Infracost CLI reads INFRACOST_API_KEY
-        INFRACOST_API_KEY = credentials('infracost-api-token')
+        INFRACOST_CLI_AUTHENTICATION_TOKEN = credentials('infracost-api-token')
 
         BUDGET = '80'
     }
@@ -26,8 +25,6 @@ pipeline {
         stage('Dependency Check') {
             steps {
                 sh 'pip3 install pip-audit --break-system-packages'
-                // Changed: no "-r" (that needs python3-venv). Audits the installed environment.
-                // Remove "|| true" once you want vulnerabilities to fail the build.
                 sh 'python3 -m pip_audit || true'
             }
         }
@@ -67,21 +64,17 @@ pipeline {
             }
         }
 
-        // Removed: "Test Infracost Auth" stage (it was the diagnostic that failed the build)
-
         stage('Infracost Scan') {
             steps {
                 sh '''
                     echo "===== RUNNING INFRACOST ====="
 
-                    infracost breakdown \
-                      --path terraform-infra \
-                      --format json \
-                      --out-file terraform-infra/cost.json
+                    infracost scan terraform-infra --org pes-university --json > terraform-infra/cost.json
+
+                    infracost inspect --file terraform-infra/cost.json --summary
 
                     echo "===== AZURE ESTIMATED COST ====="
-
-                    python3 -c 'import json,sys; d=json.load(open("terraform-infra/cost.json")); c=d.get("totalMonthlyCost"); print("Azure: $" + str(c) + "/month"); sys.exit(1 if c is None or float(c) == 0 else 0)'
+                    python3 csp-comparison/get_cost.py terraform-infra/cost.json
                 '''
             }
         }
@@ -104,7 +97,6 @@ pipeline {
                     } else {
                         def choice = 'STOP'
 
-                        // Changed: timeout so a forgotten prompt doesn't hold the executor
                         timeout(time: 30, unit: 'MINUTES') {
                             choice = input(
                                 message: 'Azure is over budget. Select deployment option:',
@@ -140,11 +132,8 @@ pipeline {
 
         stage('Terraform Apply - Azure') {
             when {
-                expression {
-                    env.SELECTED_CSP == 'Azure'
-                }
+                expression { env.SELECTED_CSP == 'Azure' }
             }
-
             steps {
                 dir('terraform-infra') {
                     sh 'terraform apply -auto-approve tfplan'
@@ -154,11 +143,8 @@ pipeline {
 
         stage('Push to ACR') {
             when {
-                expression {
-                    env.SELECTED_CSP == 'Azure'
-                }
+                expression { env.SELECTED_CSP == 'Azure' }
             }
-
             steps {
                 sh '''
                     az acr login --name "$ACR_NAME"
@@ -177,11 +163,8 @@ pipeline {
 
         stage('Deploy to AKS') {
             when {
-                expression {
-                    env.SELECTED_CSP == 'Azure'
-                }
+                expression { env.SELECTED_CSP == 'Azure' }
             }
-
             steps {
                 sh '''
                     az aks get-credentials \
@@ -204,11 +187,9 @@ pipeline {
         always {
             echo "Selected CSP: ${env.SELECTED_CSP ?: 'NONE'}"
         }
-
         success {
             echo '===== PIPELINE COMPLETED SUCCESSFULLY ====='
         }
-
         failure {
             echo '===== PIPELINE FAILED / STOPPED ====='
         }
