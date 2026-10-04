@@ -1,5 +1,8 @@
 pipeline {
     agent any
+    triggers {
+        pollSCM('H/2 * * * *')
+    }
 
     environment {
         ACR_NAME = 'cloudcostcicdacr'
