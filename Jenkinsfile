@@ -71,55 +71,55 @@ pipeline {
 }
 
         stage('Cloud Cost Gate') {
-            steps {
-                script {
-                    sh 'chmod +x csp-comparison/cost-gate.sh'
+    steps {
+        script {
+            sh 'chmod +x csp-comparison/cost-gate.sh'
 
-                    def result = sh(
-                        script: 'BUDGET=$BUDGET ./csp-comparison/cost-gate.sh',
-                        returnStdout: true
-                    ).trim()
+            def result = sh(
+                script: 'BUDGET=$BUDGET ./csp-comparison/cost-gate.sh',
+                returnStdout: true
+            ).trim()
 
-                    echo result
+            echo result
 
-                    if (result.contains('WITHIN_BUDGET')) {
-                        env.SELECTED_CSP = 'Azure'
-                        echo 'Cost is within budget. Continuing with Azure deployment.'
-                    } else {
-                        def choice = 'STOP'
+            if (result.contains('WITHIN_BUDGET')) {
+                env.SELECTED_CSP = 'Azure'
+                echo 'Cost is within budget. Continuing with Azure deployment.'
+            } else {
+                def selected = 'STOP'
 
-                        timeout(time: 30, unit: 'MINUTES') {
-                            choice = input(
-                                message: 'Azure is over budget. Select deployment option:',
-                                parameters: [
-                                    choice(
-                                        name: 'CSP',
-                                        choices: 'Azure\nAWS\nGCP\nSTOP',
-                                        description: 'Select the cloud provider to deploy'
-                                    )
-                                ]
+                timeout(time: 30, unit: 'MINUTES') {
+                    selected = input(
+                        message: 'Azure is over budget. Select deployment option:',
+                        parameters: [
+                            choice(
+                                name: 'CSP',
+                                choices: 'Azure\nAWS\nGCP\nSTOP',
+                                description: 'Select the cloud provider to deploy'
                             )
-                        }
+                        ]
+                    )
+                }
 
-                        env.SELECTED_CSP = choice
+                env.SELECTED_CSP = selected
 
-                        if (choice == 'STOP') {
-                            error('Deployment stopped by user.')
-                        }
+                if (selected == 'STOP') {
+                    error('Deployment stopped by user.')
+                }
 
-                        echo "Selected CSP: ${choice}"
+                echo "Selected CSP: ${selected}"
 
-                        if (choice == 'AWS') {
-                            error('AWS cost comparison is available, but AWS deployment is not configured yet.')
-                        }
+                if (selected == 'AWS') {
+                    error('AWS cost comparison is available, but AWS deployment is not configured yet.')
+                }
 
-                        if (choice == 'GCP') {
-                            error('GCP cost comparison is available, but GCP deployment is not configured yet.')
-                        }
-                    }
+                if (selected == 'GCP') {
+                    error('GCP cost comparison is available, but GCP deployment is not configured yet.')
                 }
             }
         }
+    }
+}
 
         stage('Terraform Apply - Azure') {
             when {
