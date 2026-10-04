@@ -68,7 +68,7 @@ pipeline {
             steps {
                 sh '''
                     echo "===== RUNNING INFRACOST ====="
-
+                    infracost auth whoami
                     infracost scan terraform-infra --json > terraform-infra/cost.json
                     infracost inspect --file terraform-infra/cost.json --summary
 
