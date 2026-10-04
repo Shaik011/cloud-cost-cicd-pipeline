@@ -68,6 +68,14 @@ pipeline {
             steps {
                 sh '''
                     echo "Testing Infracost authentication..."
+
+                    if [ -n "$INFRACOST_CLI_AUTHENTICATION_TOKEN" ]; then
+                        echo "INFRACOST TOKEN: PRESENT"
+                    else
+                        echo "INFRACOST TOKEN: MISSING"
+                        exit 1
+                    fi
+
                     infracost scan --org pes-university
                 '''
             }
