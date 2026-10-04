@@ -9,6 +9,8 @@ pipeline {
         ARM_TENANT_ID       = credentials('azure-tenant-id')
         ARM_SUBSCRIPTION_ID = credentials('azure-subscription-id')
 
+        INFRACOST_CLI_AUTHENTICATION_TOKEN = credentials('infracost-api-token')
+
         BUDGET = '80'
     }
 
@@ -67,12 +69,14 @@ pipeline {
                 sh '''
                     echo "===== RUNNING INFRACOST ====="
 
-                    infracost scan terraform-infra \
-                      --json > terraform-infra/cost.json
+                    infracost breakdown \
+                      --path terraform-infra \
+                      --format json \
+                      --out-file terraform-infra/cost.json
 
                     echo "===== AZURE ESTIMATED COST ====="
 
-                    python3 -c "import json; print('Azure: $' + json.load(open('terraform-infra/cost.json'))['summary']['total_monthly_cost'] + '/month')"
+                    python3 -c "import json; d=json.load(open('terraform-infra/cost.json')); print('Azure: $' + str(d.get('totalMonthlyCost', 'UNKNOWN')) + '/month')"
                 '''
             }
         }
