@@ -65,20 +65,19 @@ pipeline {
         }
 
         stage('Infracost Scan') {
-            steps {
-                sh '''
-                    echo "===== RUNNING INFRACOST ====="
-                    infracost auth whoami
-                    infracost --version
-                    infracost scan --help
-                    infracost scan terraform-infra --org pes-university --json > terraform-infra/cost.json
-                    infracost inspect --file terraform-infra/cost.json --summary
+          steps {
+            sh '''
+            echo "===== RUNNING INFRACOST ====="
+            infracost auth whoami
+            infracost --version
+            infracost scan terraform-infra --org pes-university --debug 2>&1 | tee terraform-infra/scan-debug.log
+            infracost inspect --file terraform-infra/cost.json --summary
 
-                    echo "===== AZURE ESTIMATED COST ====="
-                    python3 csp-comparison/get_cost.py terraform-infra/cost.json
-                '''
-            }
-        }
+            echo "===== AZURE ESTIMATED COST ====="
+            python3 csp-comparison/get_cost.py terraform-infra/cost.json
+        '''
+    }
+}
 
         stage('Cloud Cost Gate') {
             steps {
