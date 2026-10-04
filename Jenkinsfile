@@ -69,8 +69,7 @@ pipeline {
                 sh '''
                     echo "===== RUNNING INFRACOST ====="
 
-                    infracost breakdown \
-                      --path terraform-infra \
+                    infracost scan terraform-infra \
                       --format json \
                       --out-file terraform-infra/cost.json
 
