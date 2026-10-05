@@ -136,24 +136,27 @@ pipeline {
         }
 
         stage('Push to ACR') {
-            when {
-                expression { env.SELECTED_CSP == 'Azure' }
-            }
-            steps {
-                sh '''
-                    az acr login --name "$ACR_NAME"
+    when {
+        expression { env.SELECTED_CSP == 'Azure' }
+    }
+    steps {
+        sh '''
+            az acr login --name "$ACR_NAME"
 
-                    docker tag myapp:${BUILD_NUMBER} \
-                      ${ACR_NAME}.azurecr.io/myapp:${BUILD_NUMBER}
+            docker tag myapp:${BUILD_NUMBER} \
+              ${ACR_NAME}.azurecr.io/myapp:${BUILD_NUMBER}
 
-                    docker tag myapp:${BUILD_NUMBER} \
-                      ${ACR_NAME}.azurecr.io/myapp:latest
-
-                    docker push ${ACR_NAME}.azurecr.io/myapp:${BUILD_NUMBER}
-                    docker push ${ACR_NAME}.azurecr.io/myapp:latest
-                '''
-            }
+            docker tag myapp:${BUILD_NUMBER} \
+              ${ACR_NAME}.azurecr.io/myapp:latest
+        '''
+        retry(3) {
+            sh 'docker push ${ACR_NAME}.azurecr.io/myapp:${BUILD_NUMBER}'
         }
+        retry(3) {
+            sh 'docker push ${ACR_NAME}.azurecr.io/myapp:latest'
+        }
+    }
+}
 
         stage('Deploy to AKS') {
             when {
