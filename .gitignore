@@ -13,6 +13,7 @@ terraform-infra/cost.json
 terraform-infra/powershell
 terraform-infra/set
 structure.txt
+terraform-infra/plan.json
 
 # Python
 __pycache__/

@@ -1,0 +1,51 @@
+{
+  "updated": "2026-10-06",
+  "note": "Fallback reference prices (USD), used only when a live lookup fails. Azure prices are always live.",
+  "assumptions": {
+    "registry_storage_gb": 10,
+    "storage_account_gb": 100
+  },
+  "regions": {
+    "centralindia": {"aws": "ap-south-1", "gcp": "asia-south1"},
+    "eastus": {"aws": "us-east-1", "gcp": "us-east1"}
+  },
+  "azure": {
+    "aks_standard_tier_hourly": 0.10
+  },
+  "azure_sizes": {
+    "Standard_B1s": [1, 1],
+    "Standard_B2s": [2, 4],
+    "Standard_B2ms": [2, 8],
+    "Standard_B2s_v2": [2, 8],
+    "Standard_B4ms": [4, 16],
+    "Standard_D2s_v3": [2, 8],
+    "Standard_D4s_v3": [4, 16],
+    "Standard_D8s_v3": [8, 32],
+    "Standard_D2s_v5": [2, 8],
+    "Standard_D4s_v5": [4, 16]
+  },
+  "aws": {
+    "families": ["t3", "t3a", "m5", "m6i"],
+    "k8s_control_plane_hourly": 0.10,
+    "registry_gb_month": 0.10,
+    "object_storage_gb_month": 0.025,
+    "disk_gb_month": 0.114,
+    "compute": [
+      {"type": "t3.medium",  "vcpu": 2, "memory_gb": 4,  "hourly": 0.0448},
+      {"type": "t3.large",   "vcpu": 2, "memory_gb": 8,  "hourly": 0.0896},
+      {"type": "t3.xlarge",  "vcpu": 4, "memory_gb": 16, "hourly": 0.1792},
+      {"type": "t3.2xlarge", "vcpu": 8, "memory_gb": 32, "hourly": 0.3584}
+    ]
+  },
+  "gcp": {
+    "k8s_control_plane_hourly": 0.10,
+    "registry_gb_month": 0.10,
+    "object_storage_gb_month": 0.023,
+    "disk_gb_month": 0.048,
+    "compute": [
+      {"type": "e2-standard-2", "vcpu": 2, "memory_gb": 8,  "hourly": 0.08048436},
+      {"type": "e2-standard-4", "vcpu": 4, "memory_gb": 16, "hourly": 0.16096872},
+      {"type": "e2-standard-8", "vcpu": 8, "memory_gb": 32, "hourly": 0.32193744}
+    ]
+  }
+}

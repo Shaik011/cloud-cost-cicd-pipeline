@@ -1,5 +1,6 @@
 pipeline {
     agent any
+
     triggers {
         pollSCM('H/2 * * * *')
     }
@@ -11,8 +12,6 @@ pipeline {
         ARM_CLIENT_SECRET   = credentials('azure-client-secret')
         ARM_TENANT_ID       = credentials('azure-tenant-id')
         ARM_SUBSCRIPTION_ID = credentials('azure-subscription-id')
-
-        INFRACOST_CLI_AUTHENTICATION_TOKEN = credentials('infracost-api-token')
 
         BUDGET = '50'
     }
@@ -62,67 +61,68 @@ pipeline {
                     sh '''
                         terraform init
                         terraform plan -out=tfplan
+                        terraform show -json tfplan > plan.json
                     '''
                 }
             }
         }
 
         stage('Cost Estimate') {
-    steps {
-        sh 'python3 csp-comparison/estimate_azure.py terraform-infra/cost.json'
-    }
-}
+            steps {
+                sh 'python3 csp-comparison/estimate.py terraform-infra/plan.json'
+            }
+        }
 
         stage('Cloud Cost Gate') {
-    steps {
-        script {
-            sh 'chmod +x csp-comparison/cost-gate.sh'
+            steps {
+                script {
+                    sh 'chmod +x csp-comparison/cost-gate.sh'
 
-            def result = sh(
-                script: 'BUDGET=$BUDGET ./csp-comparison/cost-gate.sh',
-                returnStdout: true
-            ).trim()
+                    def result = sh(
+                        script: 'BUDGET=$BUDGET ./csp-comparison/cost-gate.sh',
+                        returnStdout: true
+                    ).trim()
 
-            echo result
+                    echo result
 
-            if (result.contains('WITHIN_BUDGET')) {
-                env.SELECTED_CSP = 'Azure'
-                echo 'Cost is within budget. Continuing with Azure deployment.'
-            } else {
-                def selected = 'STOP'
+                    if (result.contains('WITHIN_BUDGET')) {
+                        env.SELECTED_CSP = 'Azure'
+                        echo 'Cost is within budget. Continuing with Azure deployment.'
+                    } else {
+                        def selected = 'STOP'
 
-                timeout(time: 30, unit: 'MINUTES') {
-                    selected = input(
-                        message: 'Azure is over budget. Select deployment option:',
-                        parameters: [
-                            choice(
-                                name: 'CSP',
-                                choices: 'Azure\nAWS\nGCP\nSTOP',
-                                description: 'Select the cloud provider to deploy'
+                        timeout(time: 30, unit: 'MINUTES') {
+                            selected = input(
+                                message: 'Azure is over budget. Select deployment option:',
+                                parameters: [
+                                    choice(
+                                        name: 'CSP',
+                                        choices: 'Azure\nAWS\nGCP\nSTOP',
+                                        description: 'Select the cloud provider to deploy'
+                                    )
+                                ]
                             )
-                        ]
-                    )
-                }
+                        }
 
-                env.SELECTED_CSP = selected
+                        env.SELECTED_CSP = selected
 
-                if (selected == 'STOP') {
-                    error('Deployment stopped by user.')
-                }
+                        if (selected == 'STOP') {
+                            error('Deployment stopped by user.')
+                        }
 
-                echo "Selected CSP: ${selected}"
+                        echo "Selected CSP: ${selected}"
 
-                if (selected == 'AWS') {
-                    error('AWS cost comparison is available, but AWS deployment is not configured yet.')
-                }
+                        if (selected == 'AWS') {
+                            error('AWS cost comparison is available, but AWS deployment is not configured yet.')
+                        }
 
-                if (selected == 'GCP') {
-                    error('GCP cost comparison is available, but GCP deployment is not configured yet.')
+                        if (selected == 'GCP') {
+                            error('GCP cost comparison is available, but GCP deployment is not configured yet.')
+                        }
+                    }
                 }
             }
         }
-    }
-}
 
         stage('Terraform Apply - Azure') {
             when {
@@ -136,27 +136,27 @@ pipeline {
         }
 
         stage('Push to ACR') {
-    when {
-        expression { env.SELECTED_CSP == 'Azure' }
-    }
-    steps {
-        sh '''
-            az acr login --name "$ACR_NAME"
+            when {
+                expression { env.SELECTED_CSP == 'Azure' }
+            }
+            steps {
+                sh '''
+                    az acr login --name "$ACR_NAME"
 
-            docker tag myapp:${BUILD_NUMBER} \
-              ${ACR_NAME}.azurecr.io/myapp:${BUILD_NUMBER}
+                    docker tag myapp:${BUILD_NUMBER} \
+                      ${ACR_NAME}.azurecr.io/myapp:${BUILD_NUMBER}
 
-            docker tag myapp:${BUILD_NUMBER} \
-              ${ACR_NAME}.azurecr.io/myapp:latest
-        '''
-        retry(3) {
-            sh 'docker push ${ACR_NAME}.azurecr.io/myapp:${BUILD_NUMBER}'
+                    docker tag myapp:${BUILD_NUMBER} \
+                      ${ACR_NAME}.azurecr.io/myapp:latest
+                '''
+                retry(3) {
+                    sh 'docker push ${ACR_NAME}.azurecr.io/myapp:${BUILD_NUMBER}'
+                }
+                retry(3) {
+                    sh 'docker push ${ACR_NAME}.azurecr.io/myapp:latest'
+                }
+            }
         }
-        retry(3) {
-            sh 'docker push ${ACR_NAME}.azurecr.io/myapp:latest'
-        }
-    }
-}
 
         stage('Deploy to AKS') {
             when {
