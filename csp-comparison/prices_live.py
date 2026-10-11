@@ -63,11 +63,14 @@ def aws_ec2(region, families):
                 continue
             pf = d.get("Product Family")
             if pf == "Compute Instance":
-                if (d.get("Tenancy") == "Shared" and d.get("Operating System") == "Linux"
+                on_demand = ("on demand" in d.get("RateDescription", "").lower()
+                             or d.get("TermType") == "OnDemand")
+                if (on_demand and d.get("Tenancy") == "Shared" and d.get("Operating System") == "Linux"
                         and d.get("Pre Installed S/W") == "NA"
                         and d.get("License Model") == "No License required"
                         and d.get("CapacityStatus") == "Used"
-                        and not d.get("LeaseContractLength")):
+                        and not d.get("LeaseContractLength")
+                        and not d.get("PurchaseOption")):
                     itype = d.get("Instance Type", "")
                     if itype.split(".")[0] in families:
                         instances.append((itype, int(d["vCPU"]), float(d["Memory"].split()[0]), price))
