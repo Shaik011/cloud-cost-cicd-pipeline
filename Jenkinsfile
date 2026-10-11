@@ -12,6 +12,7 @@ pipeline {
         ARM_CLIENT_SECRET   = credentials('azure-client-secret')
         ARM_TENANT_ID       = credentials('azure-tenant-id')
         ARM_SUBSCRIPTION_ID = credentials('azure-subscription-id')
+        GCP_API_KEY         = credentials('gcp-api-key')
 
         BUDGET = '50'
     }
