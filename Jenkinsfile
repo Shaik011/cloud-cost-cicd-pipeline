@@ -5,6 +5,11 @@ pipeline {
         pollSCM('H/2 * * * *')
     }
 
+    parameters {
+        booleanParam(name: 'DESTROY_AWS', defaultValue: false,
+                     description: 'Delete all AWS resources created by this pipeline (then skip the cost gate and deployments)')
+    }
+
     environment {
         ACR_NAME = 'cloudcostcicdacr'
 
@@ -78,7 +83,32 @@ pipeline {
             }
         }
 
+        stage('AWS Cleanup') {
+            when {
+                expression { params.DESTROY_AWS }
+            }
+            steps {
+                sh '''
+                    aws eks update-kubeconfig \
+                      --region ${AWS_DEFAULT_REGION} \
+                      --name cloud-cost-cicd-eks || true
+
+                    kubectl delete service myapp-service --ignore-not-found --timeout=120s || true
+                    sleep 60
+                '''
+                dir('terraform-aws') {
+                    sh '''
+                        terraform init
+                        terraform destroy -auto-approve
+                    '''
+                }
+            }
+        }
+
         stage('Cloud Cost Gate') {
+            when {
+                expression { !params.DESTROY_AWS }
+            }
             steps {
                 script {
                     sh 'chmod +x csp-comparison/cost-gate.sh'
