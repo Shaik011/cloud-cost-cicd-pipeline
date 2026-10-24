@@ -90,7 +90,7 @@ resource "aws_eks_node_group" "default" {
   node_group_name = "default"
   node_role_arn   = aws_iam_role.eks_node.arn
   subnet_ids      = data.aws_subnets.default.ids
-  instance_types  = ["t3a.large"]
+  instance_types  = ["t3.micro"]
 
   scaling_config {
     desired_size = 1
