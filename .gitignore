@@ -6,6 +6,7 @@ tfplan
 tfplan.json
 *.tfplan
 
+
 # Infracost generated files
 terraform-infra/cost.json
 
@@ -14,6 +15,10 @@ terraform-infra/powershell
 terraform-infra/set
 structure.txt
 terraform-infra/plan.json
+terraform-aws/.terraform/
+terraform-aws/*.tfstate
+terraform-aws/*.tfstate.*
+terraform-aws/tfplan
 
 # Python
 __pycache__/

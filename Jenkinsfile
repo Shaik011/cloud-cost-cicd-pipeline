@@ -14,6 +14,10 @@ pipeline {
         ARM_SUBSCRIPTION_ID = credentials('azure-subscription-id')
         GCP_API_KEY         = credentials('gcp-api-key')
 
+        AWS_ACCESS_KEY_ID     = credentials('aws-access-key-id')
+        AWS_SECRET_ACCESS_KEY = credentials('aws-secret-access-key')
+        AWS_DEFAULT_REGION    = 'ap-south-1'
+
         BUDGET = '50'
     }
 
@@ -113,17 +117,15 @@ pipeline {
 
                         echo "Selected CSP: ${selected}"
 
-                        if (selected == 'AWS') {
-                            error('AWS cost comparison is available, but AWS deployment is not configured yet.')
-                        }
-
                         if (selected == 'GCP') {
-                            error('GCP cost comparison is available, but GCP deployment is not configured yet.')
+                            error('GCP cost comparison is available, but GCP deployment is not configured.')
                         }
                     }
                 }
             }
         }
+
+        // ---------------- Azure ----------------
 
         stage('Terraform Apply - Azure') {
             when {
@@ -176,6 +178,67 @@ pipeline {
                       || kubectl apply -f deployment.yaml
 
                     kubectl rollout status deployment/myapp-deployment
+                '''
+            }
+        }
+
+        // ---------------- AWS ----------------
+
+        stage('Terraform Apply - AWS') {
+            when {
+                expression { env.SELECTED_CSP == 'AWS' }
+            }
+            steps {
+                dir('terraform-aws') {
+                    sh '''
+                        terraform init
+                        terraform apply -auto-approve
+                    '''
+                }
+            }
+        }
+
+        stage('Push to ECR') {
+            when {
+                expression { env.SELECTED_CSP == 'AWS' }
+            }
+            steps {
+                script {
+                    env.ECR_REGISTRY = sh(
+                        script: 'echo $(aws sts get-caller-identity --query Account --output text).dkr.ecr.${AWS_DEFAULT_REGION}.amazonaws.com',
+                        returnStdout: true
+                    ).trim()
+                }
+                sh '''
+                    aws ecr get-login-password --region ${AWS_DEFAULT_REGION} \
+                      | docker login --username AWS --password-stdin ${ECR_REGISTRY}
+
+                    docker tag myapp:${BUILD_NUMBER} ${ECR_REGISTRY}/myapp:${BUILD_NUMBER}
+                    docker tag myapp:${BUILD_NUMBER} ${ECR_REGISTRY}/myapp:latest
+                '''
+                retry(3) {
+                    sh 'docker push ${ECR_REGISTRY}/myapp:${BUILD_NUMBER}'
+                }
+                retry(3) {
+                    sh 'docker push ${ECR_REGISTRY}/myapp:latest'
+                }
+            }
+        }
+
+        stage('Deploy to EKS') {
+            when {
+                expression { env.SELECTED_CSP == 'AWS' }
+            }
+            steps {
+                sh '''
+                    aws eks update-kubeconfig \
+                      --region ${AWS_DEFAULT_REGION} \
+                      --name cloud-cost-cicd-eks
+
+                    sed "s|image: .*|image: ${ECR_REGISTRY}/myapp:${BUILD_NUMBER}|" deployment.yaml \
+                      | kubectl apply -f -
+
+                    kubectl rollout status deployment/myapp-deployment --timeout=300s
                 '''
             }
         }
