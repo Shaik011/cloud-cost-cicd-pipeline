@@ -23,6 +23,8 @@ pipeline {
         AWS_SECRET_ACCESS_KEY = credentials('aws-secret-access-key')
         AWS_DEFAULT_REGION    = 'ap-southeast-2'
 
+        GRAFANA_PASSWORD = credentials('grafana-admin-password')
+
         BUDGET = '50'
     }
 
@@ -93,6 +95,7 @@ pipeline {
                       --region ${AWS_DEFAULT_REGION} \
                       --name cloud-cost-cicd-eks || true
 
+                    helm uninstall monitoring -n monitoring || true
                     kubectl delete service myapp-service --ignore-not-found --timeout=120s || true
                     sleep 60
                 '''
@@ -269,6 +272,28 @@ pipeline {
                       | kubectl apply -f -
 
                     kubectl rollout status deployment/myapp-deployment --timeout=300s
+                '''
+            }
+        }
+
+        // ---------------- Monitoring (whichever cloud was deployed) ----------------
+
+        stage('Deploy Monitoring') {
+            when {
+                expression { env.SELECTED_CSP == 'Azure' || env.SELECTED_CSP == 'AWS' }
+            }
+            steps {
+                sh '''
+                    helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+                    helm repo update
+
+                    helm upgrade --install monitoring prometheus-community/kube-prometheus-stack \
+                      --namespace monitoring --create-namespace \
+                      -f monitoring/values.yaml \
+                      --set grafana.adminPassword="$GRAFANA_PASSWORD" \
+                      --wait --timeout 10m
+
+                    kubectl get svc -n monitoring monitoring-grafana
                 '''
             }
         }
