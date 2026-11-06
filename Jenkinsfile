@@ -211,7 +211,6 @@ pipeline {
                       || kubectl apply -f deployment.yaml
 
                     kubectl rollout status deployment/myapp-deployment
-                    
                     kubectl get service myapp-service
                 '''
             }
@@ -274,7 +273,6 @@ pipeline {
                       | kubectl apply -f -
 
                     kubectl rollout status deployment/myapp-deployment --timeout=300s
-
                     kubectl get service myapp-service
                 '''
             }
@@ -282,7 +280,7 @@ pipeline {
 
         // ---------------- Monitoring (whichever cloud was deployed) ----------------
 
-                stage('Deploy Monitoring') {
+        stage('Deploy Monitoring') {
             when {
                 expression { env.SELECTED_CSP == 'Azure' || env.SELECTED_CSP == 'AWS' }
             }
@@ -307,6 +305,7 @@ pipeline {
                 '''
             }
         }
+    }
 
     post {
         always {
