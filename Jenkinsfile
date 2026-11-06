@@ -211,6 +211,8 @@ pipeline {
                       || kubectl apply -f deployment.yaml
 
                     kubectl rollout status deployment/myapp-deployment
+                    
+                    kubectl get service myapp-service
                 '''
             }
         }
@@ -272,13 +274,15 @@ pipeline {
                       | kubectl apply -f -
 
                     kubectl rollout status deployment/myapp-deployment --timeout=300s
+
+                    kubectl get service myapp-service
                 '''
             }
         }
 
         // ---------------- Monitoring (whichever cloud was deployed) ----------------
 
-        stage('Deploy Monitoring') {
+                stage('Deploy Monitoring') {
             when {
                 expression { env.SELECTED_CSP == 'Azure' || env.SELECTED_CSP == 'AWS' }
             }
@@ -286,6 +290,12 @@ pipeline {
                 sh '''
                     helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
                     helm repo update
+
+                    STATUS=$(helm status monitoring -n monitoring -o json 2>/dev/null | python3 -c "import sys,json; print(json.load(sys.stdin)['info']['status'])" 2>/dev/null || true)
+                    echo "Existing monitoring release status: ${STATUS:-none}"
+                    if [ "$STATUS" = "failed" ] || [ "$STATUS" = "pending-install" ]; then
+                      helm uninstall monitoring -n monitoring
+                    fi
 
                     helm upgrade --install monitoring prometheus-community/kube-prometheus-stack \
                       --namespace monitoring --create-namespace \
@@ -297,7 +307,6 @@ pipeline {
                 '''
             }
         }
-    }
 
     post {
         always {
