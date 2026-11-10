@@ -288,55 +288,7 @@ pipeline {
             }
         }
 
-        // -------- NEW: AWS MONITORING DIAGNOSTICS --------
 
-      stage('AWS Monitoring Diagnostics') {
-    when {
-        expression { env.SELECTED_CSP == 'AWS' }
-    }
-    steps {
-        sh '''
-            echo "========== 1. AWS IDENTITY =========="
-            aws sts get-caller-identity
-
-            echo "========== 2. NODE STATUS =========="
-            kubectl get nodes -o wide
-            kubectl describe nodes
-
-            echo "========== 3. NODE METRICS =========="
-            kubectl top nodes || true
-            kubectl top pods -A || true
-
-            echo "========== 4. APPLICATION STATUS =========="
-            kubectl get pods -n default -o wide
-            kubectl get deployments -n default
-            kubectl get services -n default
-
-            echo "========== 5. MONITORING NAMESPACE =========="
-            kubectl get namespace monitoring -o yaml || true
-            kubectl get all -n monitoring || true
-            kubectl get pvc -n monitoring || true
-            kubectl get events -n monitoring --sort-by=.lastTimestamp || true
-
-            echo "========== 6. HELM RELEASES =========="
-            helm list -A
-            helm history monitoring -n monitoring || true
-            helm status monitoring -n monitoring || true
-
-            echo "========== 7. ALL DEPLOYMENTS =========="
-            kubectl get deployments -A
-
-            echo "========== 8. ALL PODS =========="
-            kubectl get pods -A -o wide
-
-            echo "========== 9. RECENT CLUSTER EVENTS =========="
-            kubectl get events -A --sort-by=.lastTimestamp
-
-            echo "========== 10. HELM REPOSITORY =========="
-            helm repo list
-        '''
-    }
-}
 
         // ---------------- Monitoring ----------------
 
