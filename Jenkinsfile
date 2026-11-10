@@ -1,3 +1,4 @@
+
 pipeline {
     agent any
 
@@ -6,8 +7,11 @@ pipeline {
     }
 
     parameters {
-        booleanParam(name: 'DESTROY_AWS', defaultValue: false,
-                     description: 'Delete all AWS resources created by this pipeline (then skip the cost gate and deployments)')
+        booleanParam(
+            name: 'DESTROY_AWS',
+            defaultValue: false,
+            description: 'Delete all AWS resources created by this pipeline (then skip the cost gate and deployments)'
+        )
     }
 
     environment {
@@ -99,6 +103,7 @@ pipeline {
                     kubectl delete service myapp-service --ignore-not-found --timeout=120s || true
                     sleep 60
                 '''
+
                 dir('terraform-aws') {
                     sh '''
                         terraform init
@@ -185,9 +190,11 @@ pipeline {
                     docker tag myapp:${BUILD_NUMBER} \
                       ${ACR_NAME}.azurecr.io/myapp:latest
                 '''
+
                 retry(3) {
                     sh 'docker push ${ACR_NAME}.azurecr.io/myapp:${BUILD_NUMBER}'
                 }
+
                 retry(3) {
                     sh 'docker push ${ACR_NAME}.azurecr.io/myapp:latest'
                 }
@@ -243,6 +250,7 @@ pipeline {
                         returnStdout: true
                     ).trim()
                 }
+
                 sh '''
                     aws ecr get-login-password --region ${AWS_DEFAULT_REGION} \
                       | docker login --username AWS --password-stdin ${ECR_REGISTRY}
@@ -250,9 +258,11 @@ pipeline {
                     docker tag myapp:${BUILD_NUMBER} ${ECR_REGISTRY}/myapp:${BUILD_NUMBER}
                     docker tag myapp:${BUILD_NUMBER} ${ECR_REGISTRY}/myapp:latest
                 '''
+
                 retry(3) {
                     sh 'docker push ${ECR_REGISTRY}/myapp:${BUILD_NUMBER}'
                 }
+
                 retry(3) {
                     sh 'docker push ${ECR_REGISTRY}/myapp:latest'
                 }
@@ -278,11 +288,49 @@ pipeline {
             }
         }
 
-        // ---------------- Monitoring (whichever cloud was deployed) ----------------
+        // -------- NEW: AWS MONITORING DIAGNOSTICS --------
+
+        stage('AWS Monitoring Diagnostics') {
+            when {
+                expression { env.SELECTED_CSP == 'AWS' }
+            }
+            steps {
+                sh '''
+                    echo "===== AWS CLUSTER HEALTH ====="
+
+                    aws sts get-caller-identity
+
+                    kubectl get nodes -o wide
+
+                    echo "===== NODE RESOURCE CAPACITY ====="
+                    kubectl describe nodes
+
+                    echo "===== NODE METRICS ====="
+                    kubectl top nodes || true
+
+                    echo "===== MONITORING PODS ====="
+                    kubectl get pods -n monitoring -o wide || true
+
+                    echo "===== MONITORING PVCs ====="
+                    kubectl get pvc -n monitoring || true
+
+                    echo "===== MONITORING EVENTS ====="
+                    kubectl get events -n monitoring \
+                      --sort-by=.lastTimestamp || true
+
+                    echo "===== ALL CLUSTER PODS ====="
+                    kubectl get pods -A -o wide
+                '''
+            }
+        }
+
+        // ---------------- Monitoring ----------------
 
         stage('Deploy Monitoring') {
             when {
-                expression { env.SELECTED_CSP == 'Azure' || env.SELECTED_CSP == 'AWS' }
+                expression {
+                    env.SELECTED_CSP == 'Azure' || env.SELECTED_CSP == 'AWS'
+                }
             }
             steps {
                 sh '''
@@ -290,7 +338,9 @@ pipeline {
                     helm repo update
 
                     STATUS=$(helm status monitoring -n monitoring -o json 2>/dev/null | python3 -c "import sys,json; print(json.load(sys.stdin)['info']['status'])" 2>/dev/null || true)
+
                     echo "Existing monitoring release status: ${STATUS:-none}"
+
                     if [ "$STATUS" = "failed" ] || [ "$STATUS" = "pending-install" ]; then
                       helm uninstall monitoring -n monitoring
                     fi
@@ -311,9 +361,11 @@ pipeline {
         always {
             echo "Selected CSP: ${env.SELECTED_CSP ?: 'NONE'}"
         }
+
         success {
             echo '===== PIPELINE COMPLETED SUCCESSFULLY ====='
         }
+
         failure {
             echo '===== PIPELINE FAILED / STOPPED ====='
         }
